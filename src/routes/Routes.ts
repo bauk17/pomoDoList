@@ -2,7 +2,8 @@ import express from "express";
 import * as UserProfileController from "../Controllers/UserProfile";
 
 import * as UserController from "../Controllers/UserController";
-import * as UserService from "../services/UserService";
+import * as TaskController from "../Controllers/TaskController";
+
 import * as TaskService from "../services/TaskService";
 
 import { verifyTokenMiddleware } from "../helpers/JWTokenAuthenticate";
@@ -48,13 +49,13 @@ Routes.get("/getTasks", verifyTokenMiddleware, TaskService.getTasks);
 Routes.delete(
   "/deleteTask/:taskId",
   verifyTokenMiddleware,
-  TaskService.deleteTask
+  TaskController.deleteTask
 );
 
 Routes.put(
   "/changeTask/:taskId",
   verifyTokenMiddleware,
-  TaskService.updateTask
+  TaskController.updateTask
 );
 
 Routes.get(
@@ -63,7 +64,7 @@ Routes.get(
   TaskService.countUserCompletedTasks
 );
 
-Routes.put("/doneTask/:taskId", verifyTokenMiddleware, TaskService.doneTask);
+Routes.put("/doneTask/:taskId", verifyTokenMiddleware, TaskController.doneTask);
 
 Routes.get("/check-auth", (req: Request, res: Response) => {
   if (req.cookies.token) {
