@@ -35,11 +35,11 @@ export const UserAuth = async (req: Request, res: Response) => {
       User.created_at
     );
 
-    const decodedToken = jwt.decode(token);
+    const UserAuthenticated = new UserDto(User.username, User.email);
 
     return res
       .status(200)
-      .json({ message: "User Authenticated", decodedToken });
+      .json({ message: "User Authenticated", UserAuthenticated });
   } catch (err: any) {
     if (err instanceof ObjectNotFoundException) {
       return res.status(err.status).json({ message: err.message });
