@@ -3,13 +3,21 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { isUserOwner } from "../Handlers/handleIsUserOwner";
 import { increaseUserPoints } from "../helpers/RewardSystem";
+import { ObjectNotFoundException } from "../exceptions/ObjectNotFound";
+import { UnauthorizedException } from "../exceptions/Unauthorized";
+import { MissingFieldError } from "../exceptions/MissingField";
 
-export const newTask = async (req: Request, res: Response) => {
-  const { task, description } = req.body;
+interface TaskProps {
+  task: string;
+  description: string;
+  token: string;
+}
+
+export const newTask = async ({ task, description, token }: TaskProps) => {
   const currentDate = new Date().toISOString().slice(0, 19).replace("T", " ");
 
   try {
-    const decodedToken: any = jwt.decode(req.cookies.token);
+    const decodedToken: any = jwt.decode(token);
 
     const createTask = await Task.create({
       task,
@@ -18,116 +26,102 @@ export const newTask = async (req: Request, res: Response) => {
       userId: decodedToken.id,
     });
 
-    return res.send({ message: "Task created successful!", createTask });
+    return createTask;
   } catch (err) {
-    return res.status(500).send({ message: "Internal server error!", err });
+    throw err;
   }
 };
 
-export const getTasks = async (req: Request, res: Response) => {
+export const getTasks = async (token: string) => {
   try {
-    const decodedToken: any = jwt.decode(req.cookies.token);
+    const decodedToken: any = jwt.decode(token);
 
     const getUserTasks = await Task.find({ userId: decodedToken.id });
 
-    return res.status(200).json({ getUserTasks });
+    if (!getUserTasks)
+      throw new ObjectNotFoundException("Task was not found", 400);
+
+    return getUserTasks;
   } catch (err) {
-    return res.status(500).send({ e: "Internal server error!", err });
+    throw err;
   }
 };
 
-export const deleteTask = async (req: Request, res: Response) => {
-  const taskId = req.params.taskId;
+export const deleteTask = async (token: string, taskId: string) => {
+  /* const taskId = req.params.taskId; */
 
   try {
     const findTask: any = await Task.findOne({ _id: taskId });
-    const checkIn = isUserOwner(req, findTask.userId.toString());
+    /* const checkIn = isUserOwner(req, findTask.userId.toString()); */
 
     if (findTask == undefined) {
-      return res.send({ message: "This task doesn't exist on database" });
+      throw new ObjectNotFoundException("Task not found", 400);
     }
 
-    if (!checkIn) {
-      return res.send({ message: "You are not the owner of this task" });
-    }
+    /* if (!checkIn) {
+      throw new UnauthorizedException("Don`t have enough permission", 401);
+    } */
 
-    await Task.deleteOne({ _id: taskId });
+    const deletedTask = await Task.deleteOne({ _id: taskId });
 
-    return res.status(200).send({ message: "Task deleted successful" });
+    return deletedTask;
   } catch (err) {
-    return res.status(500).send({ message: "Internal server error", err });
+    throw err;
   }
 };
 
-export const updateTask = async (req: Request, res: Response) => {
-  const taskId = req.params.taskId;
-
-  const { task, description } = req.body;
-
+export const updateTask = async (
+  taskId: string,
+  { task, description }: TaskProps
+) => {
   try {
     const findTask: any = await Task.findOne({ _id: taskId });
-    const checkIn = isUserOwner(req, findTask.userId.toString());
+    /* const checkIn = isUserOwner(req, findTask.userId.toString()); */
 
     if (!findTask) {
-      return res.send({ message: "This task doesn't exist on database" });
+      throw new ObjectNotFoundException("Task not found", 400);
     }
 
-    if (!checkIn) {
+    /* if (!checkIn) {
       return res.send({ message: "You are not the owner of this task" });
-    }
+    } */
 
-    task !== undefined
-      ? (findTask.task = task)
-      : res.send({ message: "Type a new task" });
-    description !== undefined
-      ? (findTask.description = description)
-      : res.send({ message: " Type a new description" });
+    if (!task) throw new MissingFieldError("task");
+    if (!description) throw new MissingFieldError("description");
 
-    await findTask.save();
+    const savedTask = await findTask.save();
 
-    return res.send({ message: "Task updated successful" });
+    return savedTask;
   } catch (err) {
-    return res.status(404).send({ message: "Internal server error!", err });
+    throw err;
   }
 };
 
-export const doneTask = async (req: Request, res: Response) => {
-  const taskId = req.params.taskId;
-
+export const doneTask = async (token: string, taskId: string) => {
   try {
     const findTask = await Task.findOne({ _id: taskId });
 
-    if (!findTask) {
-      return res
-        .status(404)
-        .send({ message: "Task doesn't exist on database!" });
-    }
+    if (!findTask) throw new ObjectNotFoundException("Task not found", 400);
 
-    if (findTask.isDone) {
-      return res.send({ message: "Task already marked as done!" });
-    }
+    /* const checkIn = isUserOwner(req, findTask.userId.toString()); */
 
-    const checkIn = isUserOwner(req, findTask.userId.toString());
-
-    if (!checkIn) {
+    /* if (!checkIn) {
       return res.status(403).send({ message: "You are not the owner" });
-    }
+    } */
 
-    findTask.isDone = true;
-    await findTask.save();
+    findTask.isDone = true; // maybe do findTask.isDone = !isDone; instead of .isDone = true;
+    const taskDone = await findTask.save();
     const _points = 20;
-    increaseUserPoints(findTask.userId.toString(), 20);
-    return res
-      .status(200)
-      .send({ message: "Task marked as done successfully" });
+    increaseUserPoints(findTask.userId.toString(), _points);
+
+    return taskDone;
   } catch (err) {
-    console.error("Error marking task as done:", err);
-    return res.status(500).send({ message: "Internal server error" });
+    throw err;
   }
 };
 
-export const countUserCompletedTasks = async (req: Request, res: Response) => {
-  const decoded: any = jwt.decode(req.cookies.token);
+export const countUserCompletedTasks = async (token: string) => {
+  const decoded: any = jwt.decode(token);
 
   try {
     const completedTasks = await Task.countDocuments({
@@ -135,8 +129,8 @@ export const countUserCompletedTasks = async (req: Request, res: Response) => {
       isDone: true,
     });
 
-    res.send({ TasksDone: completedTasks });
+    return completedTasks;
   } catch (err) {
-    console.error(err);
+    throw err;
   }
 };
