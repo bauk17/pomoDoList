@@ -1,9 +1,11 @@
 import express from "express";
 import * as UserProfileController from "../Controllers/UserProfile";
-import * as MongoUserController from "../Controllers/MongoUserController";
-import * as MongoTaskController from "../Controllers/MongoTaskController";
 
-import { verifyTokenMiddleware } from "../services/JWTokenAuthenticate";
+import * as UserController from "../Controllers/UserController";
+import * as UserService from "../services/UserService";
+import * as TaskService from "../services/TaskService";
+
+import { verifyTokenMiddleware } from "../helpers/JWTokenAuthenticate";
 import { Request, Response } from "express";
 
 export const Routes = express.Router();
@@ -15,9 +17,13 @@ Routes.get("/", (req: Request, res: Response) => {
 });
 
 // Mongo DB
-Routes.post("/createAccount", MongoUserController.CreateAccount);
+Routes.post("/createAccount", UserController.CreateUser);
 
-Routes.post("/login", MongoUserController.UserAuthentication);
+Routes.post("/login", UserController.UserAuth);
+
+Routes.get("/test", verifyTokenMiddleware, (req: Request, res: Response) =>
+  res.send({ message: "working btw" })
+);
 
 Routes.get(
   "/userProfile",
@@ -37,31 +43,27 @@ Routes.post("/logout", (req: Request, res: Response) => {
 
 // Task Management Mongo DB - Everything already working
 
-Routes.post("/newTask", verifyTokenMiddleware, MongoTaskController.newTask);
-Routes.get("/getTasks", verifyTokenMiddleware, MongoTaskController.getTasks);
+Routes.post("/newTask", verifyTokenMiddleware, TaskService.newTask);
+Routes.get("/getTasks", verifyTokenMiddleware, TaskService.getTasks);
 Routes.delete(
   "/deleteTask/:taskId",
   verifyTokenMiddleware,
-  MongoTaskController.deleteTask
+  TaskService.deleteTask
 );
 
 Routes.put(
   "/changeTask/:taskId",
   verifyTokenMiddleware,
-  MongoTaskController.updateTask
+  TaskService.updateTask
 );
 
 Routes.get(
   "/countCompletedTasks",
   verifyTokenMiddleware,
-  MongoTaskController.countUserCompletedTasks
+  TaskService.countUserCompletedTasks
 );
 
-Routes.put(
-  "/doneTask/:taskId",
-  verifyTokenMiddleware,
-  MongoTaskController.doneTask
-);
+Routes.put("/doneTask/:taskId", verifyTokenMiddleware, TaskService.doneTask);
 
 Routes.get("/check-auth", (req: Request, res: Response) => {
   if (req.cookies.token) {
