@@ -1,10 +1,7 @@
 import Task from "../Models/MongoTask";
-import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { isUserOwner } from "../Handlers/handleIsUserOwner";
 import { increaseUserPoints } from "../helpers/RewardSystem";
 import { ObjectNotFoundException } from "../exceptions/ObjectNotFound";
-import { UnauthorizedException } from "../exceptions/Unauthorized";
 import { MissingFieldError } from "../exceptions/MissingField";
 
 interface TaskProps {
@@ -47,9 +44,7 @@ export const getTasks = async (token: string) => {
   }
 };
 
-export const deleteTask = async (token: string, taskId: string) => {
-  /* const taskId = req.params.taskId; */
-
+export const deleteTask = async (taskId: string) => {
   try {
     const findTask: any = await Task.findOne({ _id: taskId });
     /* const checkIn = isUserOwner(req, findTask.userId.toString()); */
@@ -62,9 +57,7 @@ export const deleteTask = async (token: string, taskId: string) => {
       throw new UnauthorizedException("Don`t have enough permission", 401);
     } */
 
-    const deletedTask = await Task.deleteOne({ _id: taskId });
-
-    return deletedTask;
+    return await Task.deleteOne({ _id: taskId });
   } catch (err) {
     throw err;
   }
@@ -72,23 +65,21 @@ export const deleteTask = async (token: string, taskId: string) => {
 
 export const updateTask = async (
   taskId: string,
-  { task, description }: TaskProps
+  task: string,
+  description: string
 ) => {
   try {
     const findTask: any = await Task.findOne({ _id: taskId });
-    /* const checkIn = isUserOwner(req, findTask.userId.toString()); */
 
     if (!findTask) {
       throw new ObjectNotFoundException("Task not found", 400);
     }
 
-    /* if (!checkIn) {
-      return res.send({ message: "You are not the owner of this task" });
-    } */
-
     if (!task) throw new MissingFieldError("task");
     if (!description) throw new MissingFieldError("description");
 
+    findTask.task = task;
+    findTask.description = description;
     const savedTask = await findTask.save();
 
     return savedTask;
@@ -97,17 +88,11 @@ export const updateTask = async (
   }
 };
 
-export const doneTask = async (token: string, taskId: string) => {
+export const doneTask = async (taskId: string) => {
   try {
     const findTask = await Task.findOne({ _id: taskId });
 
     if (!findTask) throw new ObjectNotFoundException("Task not found", 400);
-
-    /* const checkIn = isUserOwner(req, findTask.userId.toString()); */
-
-    /* if (!checkIn) {
-      return res.status(403).send({ message: "You are not the owner" });
-    } */
 
     findTask.isDone = true; // maybe do findTask.isDone = !isDone; instead of .isDone = true;
     const taskDone = await findTask.save();
