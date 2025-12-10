@@ -44,8 +44,8 @@ Routes.post("/logout", (req: Request, res: Response) => {
 
 // Task Management Mongo DB - Everything already working
 
-Routes.post("/newTask", verifyTokenMiddleware, TaskService.newTask);
-Routes.get("/getTasks", verifyTokenMiddleware, TaskService.getTasks);
+Routes.post("/newTask", verifyTokenMiddleware, TaskController.newTask);
+Routes.get("/getTasks", verifyTokenMiddleware, TaskController.getTasks);
 Routes.delete(
   "/deleteTask/:taskId",
   verifyTokenMiddleware,
@@ -61,7 +61,7 @@ Routes.put(
 Routes.get(
   "/countCompletedTasks",
   verifyTokenMiddleware,
-  TaskService.countUserCompletedTasks
+  TaskController.countUserCompletedTasks
 );
 
 Routes.put("/doneTask/:taskId", verifyTokenMiddleware, TaskController.doneTask);
